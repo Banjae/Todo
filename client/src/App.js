@@ -1,110 +1,81 @@
-import React, {Component} from "react";
+import React, { useCallback, useState } from "react";
+import Form from "./components/Form";
+import List from "./components/List";
 // 클래스 컴포넌트
-export default class App extends Component {
-  state = {
-    // 속성명 : 속성값
-    // 할일 목록 Mock data
-    todoData: [
-      { id: 1, title: "할일 1", completed: false },
-      { id: 2, title: "할일 2", completed: false },
-      { id: 3, title: "할일 3", completed: false },
-      { id: 4, title: "할일 4", completed: false }
-    ],
-    todoValue : "",
-  };
 
-  btnStyle = {
-    color: "#fff",
-    border: "none",
-    padding: "5px, 9px",
-    borderRadius: "50%",
-    cursor: "pointer",
-    float: "right"
-  };
+/* 
+최초에 로컬에서 todoData를 읽어와서 
+todoData 라는 useState를 초기화 해주어야 한다.
+초기값을 로컬에서 불러와서 채워준다.
+*/
+let initTodo = localStorage.getItem("todoData");
+// 삼항연산자를 이용해서 초기값이 없으면
+// 빈배열 [] 로 초기화한다.
+// 읽어온 데이터가 있으면 JSON.stringify() 저장한 파일을
+// JSON.parse() 로 다시 객체화하여 사용한다.
+initTodo = initTodo ? JSON.parse(initTodo) : [] ;
 
-  getStyle = (completed) => {
-    return {
-      padding: "10px",
-      borderBottom: "1px #ccc dotted",
-      textDecoration : completed ? "line-through" : "none"
-    };
-  };
+export default function App() {
+  // console.log("APP Rendering...");
+  const [todoData, setTodoData] = useState(initTodo);
+  const [todoValue, setTodoValue] = useState("");
 
-  deleteClick = (id) => {
+  const deleteClick = useCallback ((id) => {
     // 클릭된 id와 다른 요소들만 걸러서 새로운 배열 생성
-    const nowTodo = this.state.todoData.filter((item) => item.id !== id);
+    const nowTodo = todoData.filter((item) => item.id !== id);
     // console.log("Click", nowTodo);
-    this.setState({ todoData: nowTodo })
-  };
+    // 목록을 갱신한다
+    setTodoData(nowTodo)
+    // 로컬에 저장한다 (DB 예정)
+    localStorage.setItem("todoData", JSON.stringify(nowTodo));
+  },
+  [todoData]
+  );
 
-  toggleClick = (id) => {
-    //  map를 통해 this.state.todoData의 complete를 업데이트
-    const updateTodo = this.state.todoData.map((item) => {
-      if(item.id === id) {
-        item.completed = !item.completed; 
-      }
-      return item;
-    });
-    this.setState({ todoData: updateTodo});
-  };
-
-  changeTodoValue = (event) => {
-    // console.log(event.target.value);
-    this.setState( {todoValue:event.target.value});
-  };
-
-  addTodoSubmit = (event) => {
+  const addTodoSubmit = (event) => {
     event.preventDefault();
+
+    // 공백 문자열 제거 추가
+    let str = todoValue;
+    str = str.replace(/^\s+|\s+$/gm, "");
+    if (str.length === 0) {
+      alert("내용을 입력하세요.");
+      setTodoValue("");
+      return;
+    }
+
     const addTodo = {
       id: Date.now(),
-      title: this.state.todoValue,
+      title: todoValue,
       completed: false
     };
     // todoData : []
-    this.setState({ todoData: [...this.state.todoData, addTodo] });
-    this.setState({todoValue: ""});
+    setTodoData([...todoData, addTodo]);
+    // 로컬에 저장한다.(DB 예정)
+    localStorage.setItem("todoData", JSON.stringify([...todoData, addTodo]));
+    setTodoValue("");
   };
 
-  
-  render() {
-    return (
-      <div className="container">
-        <div className="todoBlock">
-          <div className="title">
+  const deleteAllClick = () => {
+    setTodoData([]);
+    // 자료를 지운다.(DB 초기화)
+    localStorage.clear();
+  }
+
+  return (
+      <div className="flex items-center justify-center w-screen h-screen">
+        <div className="w-full p-6 m-4 bg-white rounded shadow lg:w-3/4 lg:max-w-5xl">
+          <div className="flex justify-between mb-3">
             <h1> 할일 목록</h1>
+            <button onClick={deleteAllClick}>핵폭탄</button>
           </div>
 
-          {this.state.todoData.map( (item) => (
-            <div style={this.getStyle(item.completed)} key={item.id}>
-              <input 
-                type="checkbox" 
-                defaultChecked={item.completed} 
-                onChange={() => this.toggleClick(item.id)} />
-              {item.title}
-              <button 
-                style={this.btnStyle} 
-                onClick={() => this.deleteClick(item.id)}> 
-                X
-              </button>
-            </div>
-          ))}
+          <List todoData={todoData} setTodoData={setTodoData} deleteClick={deleteClick}/>
 
-            <form style= { {dispaly: "flex"} } onSubmit={this.addTodoSubmit}>
-              <input 
-                style= { {flex: "10"}} 
-                type= "text" 
-                placeholder= "할 일을 입력하세요"
-                value= {this.state.todoValue}
-                onChange= {this.changeTodoValue}
-              />
-              <input 
-                style= { {flex: "1"} }
-                type= "submit"
-              />
-            </form>
+          <Form todoValue={todoValue} setTodoValue={setTodoValue} addTodoSubmit={addTodoSubmit} />
 
         </div>  
       </div>        
-    )
-  }
+  )
+
 }
